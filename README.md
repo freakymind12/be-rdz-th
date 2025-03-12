@@ -1,6 +1,6 @@
 # Nama Proyek
 
-Deskripsi singkat tentang proyek Anda.
+BE-RDZ-TH
 
 ## Daftar Isi
 
@@ -12,7 +12,7 @@ Deskripsi singkat tentang proyek Anda.
 
 ## Tentang
 
-Proyek ini adalah aplikasi backend yang dibangun menggunakan Express.js. Aplikasi ini dirancang untuk Gateway dari device RDZ-TH untuk melakukan pengontrolan temperature dan humidity.
+Proyek ini adalah aplikasi backend yang dibangun menggunakan Express.js. Aplikasi ini dirancang untuk gateway dari device RDZ-TH untuk melakukan pengontrolan temperature dan humidity.
 
 ## Fitur
 
@@ -35,12 +35,12 @@ Ikuti langkah-langkah berikut untuk menginstal dan menjalankan proyek ini:
 
 1. Clone repositori ini:
    ```bash
-   git clone https://github.com/username/repo.git
+   git clone https://github.com/freakymind12/be-rdz-th.git
    ```
 
 2. Masuk ke direktori proyek:
    ```bash
-   cd nama-proyek
+   cd be-rdz-th
    ```
 
 3. Instal dependensi:
@@ -48,7 +48,7 @@ Ikuti langkah-langkah berikut untuk menginstal dan menjalankan proyek ini:
    npm install
    ```
 
-4. Konfigurasi variabel lingkungan (jika diperlukan):
+4. Konfigurasi variabel lingkungan :
    - Copy file `.env.example` di root proyek dan isi sesuai dengan format file nya
 
 ## Penggunaan
