@@ -8,6 +8,7 @@ const mailService = require("./mailer");
 
 // import utils
 const pdfReport = require("../utils/pdfReport");
+const dailyMailTemplate = require("../utils/dailyMailTemplate")
 
 // import model
 const reportModel = require("../model/report");
@@ -21,7 +22,11 @@ const taskScheduler = {
     cron.schedule("*/1 * * * *", async () => {
       try {
         const updatedRows = await deviceModel.updateStaleDevice();
-        console.log(`${dayjs().format("YYYY-MM-DD HH:mm:ss")} | SCHEDULER | DEVICE CHECK STATUS | Updated ${updatedRows} devices to status 0`);
+        console.log(
+          `${dayjs().format(
+            "YYYY-MM-DD HH:mm:ss"
+          )} | SCHEDULER | DEVICE CHECK STATUS | Updated ${updatedRows} devices to status 0`
+        );
       } catch (error) {
         console.error(error);
       }
@@ -47,7 +52,7 @@ const taskScheduler = {
   },
 
   generateReportData() {
-    cron.schedule("25 15 * * *", async () => {
+    cron.schedule("0 21 * * *", async () => {
       try {
         await reportModel.generateReportFromLogging(
           dayjs().format("YYYY-MM-DD")
@@ -66,7 +71,7 @@ const taskScheduler = {
   },
 
   emailDailyReport() {
-    cron.schedule("36 14 * * *", async () => {
+    cron.schedule("20 12 * * *", async () => {
       try {
         // Get all groups
         const groups = await groupModel.getGroup();
@@ -74,8 +79,9 @@ const taskScheduler = {
         // Looping banyak nya group
         for (const group of groups) {
           // Get Report Data
+
           const reportData = await reportModel.getReport({
-            full_date: dayjs().format("YYYY-MM-DD"),
+            full_date: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
             area: "All",
             group_id: group.group_id,
           });
@@ -96,10 +102,7 @@ const taskScheduler = {
               to: emailRecipients,
               subject: `RDZ-TH Daily Report for ${group.group_name}`,
               text: "This is daily report for your group",
-              html: `<p>Hello, this is daily report for your group</p>
-                    <p>Please find the attachment for the report</p>
-                    <p>Best regards,</p>
-                    <p>IoT System HRS ID</p>`,
+              html: dailyMailTemplate(group.group_name),
             };
 
             // Attachment
