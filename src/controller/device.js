@@ -1,6 +1,7 @@
 const { handleError, handleResponse } = require("../utils/responseUtil");
 const deviceModel = require("../model/device");
 const mqttService = require("../service/mqtt");
+const dayjs = require("dayjs");
 const MQTT_TOPIC = process.env.MQTT_TOPIC;
 const RDZ_UPDATE_PASSWORD = process.env.RDZ_UPDATE_PASSWORD;
 
@@ -43,16 +44,18 @@ const deviceController = {
     const initialPayload = {
       setting: {
         area: newArea,
-        reboot: true,
       },
       password: RDZ_UPDATE_PASSWORD,
     };
     try {
       // Kirim pesan ke device untuk inform request perubahan area di lakukan dari web
-      await deviceModel.updateDevice(oldArea, { area: newArea });
-      
       mqttService.publish(topic, JSON.stringify(initialPayload));
 
+      // disabled area sebelumnya
+      await deviceModel.updateDevice(oldArea, {
+        status: 0,
+        updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+      });
 
       handleResponse(res, "Success", 200);
     } catch (error) {
