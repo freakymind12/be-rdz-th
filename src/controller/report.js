@@ -36,9 +36,14 @@ const reportController = {
 
   downloadReport: async (req, res) => {
     try {
-      const data = await reportModel.getReport(req.query);
-      if (data.length > 0) {
-        const pdfBuffer = await pdfReport.monthly(data, "pdf", req.query);
+      const reports = await reportModel.getReport(req.query);
+
+      if (reports.data.length > 0) {
+        const pdfBuffer = await pdfReport.monthly(
+          reports.data,
+          "pdf",
+          req.query
+        );
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", "inline; filename=report.pdf");
         res.setHeader("Content-Length", pdfBuffer.length);
@@ -46,7 +51,11 @@ const reportController = {
         // Kirim PDF
         res.send(pdfBuffer);
       } else {
-        handleResponse(res, "There is no report data for this search option", 400);
+        handleResponse(
+          res,
+          "There is no report data for this search option",
+          400
+        );
       }
     } catch (error) {
       handleError(res, error);

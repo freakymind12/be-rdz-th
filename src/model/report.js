@@ -2,17 +2,32 @@ const dbPool = require("../config/dbConfig");
 
 const reportModel = {
   getReport: async (filters = {}) => {
-    const { year, month, area, full_date, group_id } = filters;
-    const reports = await dbPool("report as r")
+    const { year, month, area, full_date, group_id, page, pageSize } = filters;
+    const offset = (page - 1) * pageSize;
+
+    // Query untuk menghitung total data sebelum pagination
+    const totalQuery = dbPool("report as r")
+      .count("* as total")
+      .leftJoin("device as d", "r.area", "d.area")
+      .modify((query) => {
+        if (year) query.whereRaw("YEAR(r.report_date) = ?", [year]);
+        if (month) query.whereRaw("MONTH(r.report_date) = ?", [month]);
+        if (full_date) query.whereRaw("r.report_date = ?", [full_date]);
+        if (area && area !== "All") query.whereRaw("r.area = ?", [area]);
+        if (group_id) query.whereRaw("d.group_id = ?", [group_id]);
+      });
+
+    // Query untuk mendapatkan data dengan pagination
+    const reportsQuery = dbPool("report as r")
       .select(
         "r.id",
         "r.area",
         dbPool.raw("COALESCE(d.group_id, null) AS group_id"),
         dbPool.raw("COALESCE(g.name, null) AS group_name"),
-        "d.t_max",
-        "d.t_min",
-        "d.h_max",
-        "d.h_min",
+        "r.t_max",
+        "r.t_min",
+        "r.h_max",
+        "r.h_min",
         dbPool.raw("DATE_FORMAT(r.report_date, '%Y-%m-%d') AS report_date"),
         dbPool.raw(
           "IF(COALESCE(dc.time00, FALSE) = FALSE, r.temp_00, 'N/C') AS temp_00"
@@ -48,30 +63,28 @@ const reportModel = {
       .leftJoin("group as g", "d.group_id", "g.id")
       .orderBy("r.report_date", "asc")
       .orderBy("r.area", "asc")
-
       .modify((query) => {
-        if (year) {
-          query.whereRaw("YEAR(r.report_date) = ?", [year]);
-        }
-        if (month) {
-          query.whereRaw("MONTH(r.report_date) = ?", [month]);
-        }
-        if (full_date) {
-          query.whereRaw("r.report_date = ?", [full_date]);
-        }
-        if (area != "All") {
-          query.whereRaw("r.area = ?", [area]);
-        }
-        if (group_id) {
-          query.whereRaw("(d.group_id = ? )", [group_id]); // Memastikan NULL tetap diambil
-        }
+        if (year) query.whereRaw("YEAR(r.report_date) = ?", [year]);
+        if (month) query.whereRaw("MONTH(r.report_date) = ?", [month]);
+        if (full_date) query.whereRaw("r.report_date = ?", [full_date]);
+        if (area && area !== "All") query.whereRaw("r.area = ?", [area]);
+        if (group_id) query.whereRaw("d.group_id = ?", [group_id]);
+        if (pageSize) query.limit(pageSize).offset(offset);
       });
 
-    const structuredReports = reports.reduce((acc, report) => {
-      // Mencari grup yang sudah ada
-      let group = acc.find((g) => g.group_name === report.group_name);
+    // Menjalankan query secara parallel
+    const [totalResult, reports] = await Promise.all([
+      totalQuery.first(),
+      reportsQuery,
+    ]);
 
-      // Jika grup belum ada, buat grup baru
+    // Menghitung total halaman
+    const total = totalResult ? totalResult.total : 0;
+    const totalPages = Math.ceil(total / pageSize);
+
+    // Struktur data berdasarkan group_name
+    const structuredReports = reports.reduce((acc, report) => {
+      let group = acc.find((g) => g.group_name === report.group_name);
       if (!group) {
         group = {
           group_name: report.group_name,
@@ -80,8 +93,6 @@ const reportModel = {
         };
         acc.push(group);
       }
-
-      // Menambahkan data ke grup
       group.data.push({
         id: report.id,
         area: report.area,
@@ -98,15 +109,20 @@ const reportModel = {
         temp_18: report.temp_18,
         humi_18: report.humi_18,
       });
-
       return acc;
     }, []);
 
-    if (group_id) {
-      return structuredReports[0] || {};
-    } else {
-      return reports;
-    }
+    // Jika group_id ada, kembalikan data pertama
+    if (group_id) return structuredReports[0] || {};
+    // Jika tidak, kembalikan data dengan pagination
+    else
+      return {
+        total,
+        totalPages,
+        currentPage: parseInt(page),
+        pageSize: parseInt(pageSize),
+        data: reports,
+      };
   },
 
   generateReportFromLogging: async (dateInput = null) => {
