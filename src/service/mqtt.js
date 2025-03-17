@@ -4,7 +4,7 @@ const MQTT_TOPIC = process.env.MQTT_TOPIC;
 const dbPool = require("../config/dbConfig");
 const dayjs = require("dayjs");
 const deviceModel = require("../model/device");
-const deviceLogModel = require("../model/device_log_error")
+const deviceLogModel = require("../model/device_log_error");
 
 const mqttService = {
   client: null,
@@ -27,42 +27,36 @@ const mqttService = {
 
   async onMessage(topic, message) {
     try {
-      const data = JSON.parse(message);
-      const area = topic.split("/")[3];
-      if (!topic.includes("time") && topic.split("/")[4] == "out") {
-        
-        if(data.error.temperature.isError){
-          await deviceLogModel.addLog({
+      // Dilakukan to string dan trim untuk memperbaiki string encoding dari message yang diterima
+      const data = JSON.parse(message.toString().trim());
+      const topicParts = topic.split("/");
+      const area = topicParts[3];
+      const isOutTopic = topicParts[4] === "out";
+      const isTimeTopic = topic.includes("time");
+      const hasRequest = data.hasOwnProperty("request");
+
+      if (!isTimeTopic && isOutTopic) {
+        if (!hasRequest) {
+          await deviceModel.updateDevice(area, {
+            status: 1,
+            updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+          });
+
+          this.loggingData(topic, data.sensor);
+          this.loggingError(area, data);
+
+          this.broadcastToWs({
+            ...data,
             area,
-            type : 'temperature',
-            message: data.error.temperature.reason
-          })
+            date: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+          });
+        } else {
+          this.handleChangeArea(area, data);
         }
-
-        if(data.error.humidity.isError){
-          await deviceLogModel.addLog({
-            area,
-            type : 'humidity',
-            message: data.error.humidity.reason
-          })
-        }
-
-        // Perbarui status device
-        await deviceModel.updateDevice(area, { status: 1, updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss")});
-
-        // Logging data sensor to database and update parameter device
-        this.loggingData(topic, data.sensor);
-
-        // Broadcast sensor data to websocket
-        this.broadcastToWs({
-          ...data,
-          area: topic.split("/")[3],
-          date: dayjs().format("YYYY-MM-DD HH:mm:ss"),
-        });
       }
     } catch (error) {
-      console.error("Error parsing message", error);
-      console.error("original message", message);
+      console.error("Error parsing message:", error);
+      console.error("Original message:", message);
     }
   },
 
@@ -101,6 +95,7 @@ const mqttService = {
     this.connectedWs.push(ws);
   },
 
+  // for broadcast message from mqtt to websocket
   broadcastToWs(message) {
     this.connectedWs.forEach((ws) => {
       if (ws.readyState === ws.OPEN) {
@@ -125,7 +120,7 @@ const mqttService = {
             t_min,
             h_max,
             h_min,
-            updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss")
+            updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
           })
           .onConflict("area")
           .merge();
@@ -143,6 +138,73 @@ const mqttService = {
       }
     } catch (error) {
       console.error(error);
+    }
+  },
+
+  // sensor error log to table device_log_error
+  loggingError: async (area, data) => {
+    try {
+      if (data.error?.temperature?.isError) {
+        await deviceLogModel.addLog({
+          area,
+          type: "temperature",
+          message: data.error.temperature.reason,
+        });
+      }
+
+      if (data.error?.humidity?.isError) {
+        await deviceLogModel.addLog({
+          area,
+          type: "humidity",
+          message: data.error.humidity.reason,
+        });
+      }
+    } catch (error) {
+      console.error("Error logging data for sensor failure", error);
+    }
+  },
+
+  // handle request change area from device
+  handleChangeArea: async function (area, data) {
+    try {
+      const topic = MQTT_TOPIC.replace("#", `${area}/in`);
+      const [device] = await deviceModel.getDevice({
+        area: data.request.cek_name,
+      });
+
+      let response;
+
+      if (!device) {
+        response = {
+          status: 1,
+          note: "This area is clear, you can proceed to change area.",
+        };
+        this.publish(topic, JSON.stringify({ response }));
+        // disable old device
+        await deviceModel.updateDevice(area, {
+          status: 0,
+          updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        });
+      } else if (device.status === 1) {
+        response = {
+          status: 0,
+          note: "This area has an active device, disable the old device first.",
+        };
+        this.publish(topic, JSON.stringify({ response }));
+      } else {
+        response = {
+          status: 1,
+          note: "This area has an inactive device, are you sure you want to enable it?",
+        };
+        this.publish(topic, JSON.stringify({ response }));
+        // disable old device
+        await deviceModel.updateDevice(area, {
+          status: 0,
+          updated_at: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        });
+      }
+    } catch (error) {
+      console.error("Error handling change area:", error);
     }
   },
 };
