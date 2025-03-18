@@ -71,7 +71,7 @@ const taskScheduler = {
   },
 
   emailDailyReport() {
-    cron.schedule("20 12 * * *", async () => {
+    cron.schedule("0 8 * * *", async () => {
       try {
         // Get all groups
         const groups = await groupModel.getGroup();
