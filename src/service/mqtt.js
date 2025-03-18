@@ -116,6 +116,7 @@ const mqttService = {
           .insert({
             area,
             regional,
+            status: 1,
             t_max,
             t_min,
             h_max,
