@@ -1,4 +1,8 @@
+require("dotenv").config();
 const dayjs = require("dayjs");
+
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL
+const DASHBOARD_REPORT_URL = process.env.DASHBOARD_REPORT_URL
 const getEmailTemplate = (groupName) => {
   const date = dayjs().subtract(1, "day").format("YYYY-MM-DD");
 
@@ -84,7 +88,7 @@ const getEmailTemplate = (groupName) => {
               <p>Please find the attached report in PDF format.</p>
               <p>You can also view the report online by clicking the button below:</p>
               <div class="button-wrapper">
-                <a href="http://192.168.148.125:5173/report" class="btn">View Report</a>
+                <a href="${DASHBOARD_REPORT_URL}" class="btn">View Report</a>
               </div>
               
               <p class="note"><strong>Note:</strong>
@@ -93,7 +97,7 @@ const getEmailTemplate = (groupName) => {
 
             <div class="footer">
               <p>HRS IoT System &copy; ${dayjs().format("YYYY")}</p>
-              <p>For any support, contact: <a href="mailto:support@example.com">support@example.com</a></p>
+              <p>For any support, contact: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
             </div>
           </div>
 
