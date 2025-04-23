@@ -1,5 +1,6 @@
 const dbPool = require("../config/dbConfig");
 const dayjs = require("dayjs");
+require("dotenv").config();
 
 const deviceModel = {
   addDevice: (data) => {
@@ -28,8 +29,9 @@ const deviceModel = {
   },
 
   updateStaleDevice: () => {
+    const difMinutes = Number(process.env.REFRESH_STATUS_DEVICE_INTERVAL)
     const threshold = dayjs()
-      .subtract(10, "minute")
+      .subtract(difMinutes, "minute")
       .format("YYYY-MM-DD HH:mm:ss");
 
     return dbPool("device")

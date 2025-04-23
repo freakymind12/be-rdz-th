@@ -44,7 +44,7 @@ const mqttService = {
 
           this.loggingData(topic, data.sensor);
           this.loggingError(area, data);
-
+          // console.log(`message from device in area ${area}`,data)
           this.broadcastToWs({
             ...data,
             area,
