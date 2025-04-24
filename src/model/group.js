@@ -24,7 +24,11 @@ const groupModel = {
           "p.id as pic_id",
           "p.email as email",
           "d.area as device_area",
-          "d.status as status"
+          "d.status as status",
+          "d.t_max as t_max",
+          "d.t_min as t_min",
+          "d.h_max as h_max",
+          "d.h_min as h_min"
         )
         .leftJoin("device as d", "d.group_id", "g.id")
         .leftJoin("pic_group as pg", "g.id", "pg.group_id")
@@ -52,7 +56,11 @@ const groupModel = {
         ) {
           group.devices.push({
             device_area: row.device_area,
-            status: row.status
+            status: row.status,
+            t_max: row.t_max,
+            t_min: row.t_min,
+            h_max: row.h_max,
+            h_min: row.h_min,
           });
         }
 
