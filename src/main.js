@@ -23,7 +23,8 @@ require("express-ws")(app);
 
 // SERVICE
 taskScheduler.updateDeviceStatus();
-taskScheduler.publishTimetoMqtt();
+// disabled karena sudah ada penyedia waktunya langsung pada server
+// taskScheduler.publishTimetoMqtt();
 taskScheduler.generateReportData();
 taskScheduler.emailDailyReport();
 mqttService.init();
