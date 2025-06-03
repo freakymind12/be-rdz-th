@@ -40,7 +40,7 @@ backend
 ### 1. Clone Repository
 
 ```bash
-git clone 
+git clone https://github.com/freakymind12/be-rdz-th.git
 cd be-rdz-th
 ```
 
